@@ -106,7 +106,33 @@ from pathlib import Path
 }
 
 
+
+def 提醒跑错地方(根: Path) -> bool:
+    """在当前目录看到「旁边已经有 body/」就提醒一声 —— 有人会跑错目录，
+    然后在空目录里建了一套新的，打开发现鱼"失忆了"（其实旧的那套还在）。
+    返回 True 表示已提醒过、可以继续。
+    """
+    if (根 / "body").exists():
+        return False
+    候选 = []
+    for up in [根.parent, 根.parent.parent]:
+        if (up / "body").exists():
+            候选.append(up / "body")
+    if not 候选:
+        return False
+    print("⚠  注意：这里没有 body/，但上面这些地方有：")
+    for c in 候选:
+        print("     ", c)
+    print("   你要是在错的目录跑，就会在空地方建一套新的 —— 打开发现鱼\"失忆了\"。")
+    print("   确认要在这里新建，就再跑一次加 --yes。")
+    return True
+
+
 def main() -> int:
+    import sys as _sys
+    根 = Path.cwd()
+    if 提醒跑错地方(根) and "--yes" not in _sys.argv:
+        return 2
     dry = "--dry" in sys.argv
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     根 = Path(args[0]).resolve() if args else Path.cwd()

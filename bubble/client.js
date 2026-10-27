@@ -53,6 +53,24 @@ window.__ModuleLoader__.load({
         border-radius: 5px; background: #ff4d4d; box-shadow: 0 0 6px rgba(255,77,77,.9); }
     `
 
+    // 任何渲染错误都吃掉 —— 客户端插件一抛，整个界面会白屏（2026-10-27 主人担心别的鱼崩）
+    class 兜底 extends React.Component {
+      constructor(props) {
+        super(props)
+        this.state = { 出事了: false }
+      }
+      static getDerivedStateFromError() {
+        return { 出事了: true }
+      }
+      componentDidCatch(e) {
+        try { console.warn('[handin-bubble] 渲染出错，已静默:', e) } catch (err) {}
+      }
+      render() {
+        if (this.state.出事了) return null
+        return this.props.children
+      }
+    }
+
     function Bubble() {
       const [数据, 设数据] = React.useState(null)
       const [收起, 设收起] = React.useState(false)
@@ -206,7 +224,7 @@ window.__ModuleLoader__.load({
       try {
         ctx.slots.inject('shell.overlay', () => ctx.slots.register(
           { name: 'shell.overlay', id: 'handin-bubble', order: 120, label: '交卷' },
-          Bubble,
+          () => h(兜底, null, h(Bubble)),
         ))
       } catch (e) {
         try { console.warn('[handin-bubble] overlay disabled:', e) } catch (err) {}

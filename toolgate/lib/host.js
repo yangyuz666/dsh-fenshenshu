@@ -143,9 +143,12 @@ export function apply(ctx) {
       if (typeof tools.guard === 'function') {
         try {
           const dispose = tools.guard((exec) => {
+            try { if (existsSync(开关文件)) return undefined } catch (e) {}
             const n = exec?.name
             if (!n || !(n in 规则)) return undefined
-            const 现在分区 = 读分区(名) ?? []
+            // 读不到配置就放行 —— 宁可漏拦，也不要把别人的会话搞瘫
+            const 现在分区 = 读分区(名)
+            if (!Array.isArray(现在分区)) return undefined
             if ((规则[n] || []).some((d) => 现在分区.includes(d))) return undefined
             const 缺 = (规则[n] || []).filter((d) => !现在分区.includes(d))
             记(`${名}：守卫挡住 ${n}（缺 ${缺.join('/')}）`)
