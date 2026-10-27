@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>大肥鱼本体</title>
+<style>
+:root{--bg:#0b1524;--card:#132135;--line:#22354f;--fg:#e8f1ff;--muted:#8fa8c8;--acc:#6eaaff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.65 "Microsoft YaHei",system-ui;padding:24px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:15px;margin:0 0 10px;color:var(--acc)}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:400;font-size:12px}
+select{background:#0e1b2c;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font:inherit}
+button{background:var(--acc);color:#08111d;border:0;border-radius:6px;padding:4px 10px;font:inherit;cursor:pointer}
+button.ghost{background:transparent;color:var(--acc);border:1px solid var(--line)}
+.muted{color:var(--muted);font-size:12px}
+label.dom{display:inline-block;margin:0 12px 4px 0;white-space:nowrap}
+tr.main td{background:rgba(110,170,255,.08)}
+tr.main td:first-child{box-shadow:inset 3px 0 0 var(--acc)}
+.badge{display:inline-block;margin-left:6px;background:var(--acc);color:#08111d;border-radius:4px;padding:0 5px;font-size:11px}
+#log{white-space:pre-wrap;color:var(--muted);font-size:12px;max-height:200px;overflow:auto}
+</style>
+</head>
+<body>
+<h1>大肥鱼本体</h1>
+<div class="sub">分身表 / 提案 / 建议 —— 正文只读，不从这里改</div>
+
+<div class="card">
+  <h2>这些分区是干什么的</h2>
+  <table id="dinfo">
+    <thead><tr><th style="width:80px">分区</th><th>干什么用</th><th style="width:70px">体量</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="muted">勾得越多，每次开场读的越多、越费 token。只勾真要用的。</div>
+</div>
+
+<div class="card">
+  <h2>登记分身</h2>
+  <div style="margin-bottom:8px">
+    名字 <input id="ns-name" placeholder="比如：画画鱼" style="width:150px;background:#0e1b2c;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font:inherit">
+    &nbsp;role <span id="ns-role"></span>
+  </div>
+  <div id="ns-doms" style="margin-bottom:8px"></div>
+  <button id="ns-go">创建</button>
+  <div class="muted" style="margin-top:6px">这里只登记身份和分区。<b>聊天窗口要在 DSH 客户端里自己新建</b>，建好后把下面那行「窗口已建」勾上。</div>
+</div>
+
+<div class="card">
+  <h2>分身表</h2>
+  <div id="undo" class="muted" style="margin-bottom:8px">改动即时保存；点错了点右边撤销。</div>
+  <table id="sess">
+    <thead><tr><th style="width:96px">会话</th><th style="width:96px">role</th><th>读哪些分区（可多选）</th><th style="width:74px">交卷</th><th style="width:200px">备注</th><th style="width:74px"></th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <details id="othersWrap" style="margin-top:10px">
+    <summary id="othersSum" class="muted" style="cursor:pointer">其他分身</summary>
+    <table id="others" style="margin-top:8px">
+      <thead><tr><th style="width:96px">会话</th><th style="width:96px">role</th><th>读哪些分区（可多选）</th><th style="width:74px">交卷</th><th style="width:200px">备注</th><th style="width:74px"></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </details>
+
+  <div id="archived" style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"></div>
+</div>
+
+<div class="card">
+  <h2>待审提案</h2>
+  <table id="props">
+    <thead><tr><th>文件</th><th>谁提的</th><th>类型</th><th>目标</th><th style="width:90px"></th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="muted">面板不合并 —— 点「请主窗口审」，等本体看过才进正文。</div>
+  <div id="propsDone" style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"></div>
+</div>
+
+<div class="card">
+  <h2>建议（状态由主窗口标，这里只看）</h2>
+  <table id="sugs">
+    <thead><tr><th style="width:100px">会话</th><th style="width:46px">行</th><th>内容</th><th style="width:90px">状态</th><th style="width:110px"></th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div id="sugsDone" style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"></div>
+</div>
+
+<div class="card">
+  <h2>操作记录</h2>
+  <div id="log">（还没操作）</div>
+</div>
+
+<script>
+var ROLES = window.__ROLES__;
+var DOMAINS = window.__DOMAINS__;
+var 域说明 = [];
+var 改过 = [];   // 最近改动，用来撤销
+var 临时 = null;
+var 上次会话 = '';
+
+function 记(t, ok) {
+  var l = document.getElementById('log');
+  var color = ok ? '#5fd39a' : '#ff8a8a';
+  var div = document.createElement('div');
+  div.style.color = color;
+  div.textContent = t;
+  l.insertBefore(div, l.firstChild);
+}
+
+function api(path, body) {
+  return fetch('/api/' + path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function (r) { return r.json(); });
+}
+
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function 下拉(list, cur, attr) {
+  var s = document.createElement('select');
+  s.setAttribute(attr, '1');
+  list.forEach(function (v) {
+    var o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    if (v === cur) o.selected = true;
+    s.appendChild(o);
+  });
+  return s;
+}
+
+function 渲染域说明(信息) {
+  var tb = document.querySelector('#dinfo tbody');
+  tb.innerHTML = '';
+  信息.forEach(function (d) {
+    var tr = document.createElement('tr');
+    var td1 = el('td', '', d.name);
+    if (d.group === '素材库') td1.style.color = '#ffd27a';
+    tr.appendChild(td1);
+    var td2 = el('td', 'muted', d.desc);
+    td2.textContent = '(' + (d.group || '') + ') ' + d.desc;
+    tr.appendChild(td2);
+    var td3 = el('td', 'muted', d.kb + 'KB');
+    if (d.kb > 12) td3.style.color = '#ff9a7a';
+    tr.appendChild(td3);
+    tb.appendChild(tr);
+  });
+}
+
+// 地址里带 ?expand=1 就默认展开「其他分身」（截图/演示用）
+var 其他展开过 = /[?&]expand=1/.test(location.search);
+
+function 建行(x) {
+  var tr = document.createElement('tr');
+  if (x.role === '主窗口') tr.className = 'main';
+
+  var tdName = el('td', '', x.session);
+  if (x.role === '主窗口') tdName.appendChild(el('span', 'badge', '主窗口'));
+  var mark = el('span', '', x.window ? '✅' : '❌');
+  mark.style.marginLeft = '6px';
+  mark.style.fontSize = '13px';
+  mark.title = x.window ? '窗口在（DSH 里有这个会话）' : '没有窗口（会话被归档或删了）';
+  tdName.appendChild(mark);
+  tr.appendChild(tdName);
+
+  var tdRole = el('td');
+  tdRole.appendChild(下拉(ROLES, x.role, 'data-f'));
+  tr.appendChild(tdRole);
+
+  var tdDom = el('td');
+  域说明.forEach(function (d) {
+    var lab = el('label', 'dom');
+    if (d.group === '素材库') lab.style.color = '#ffd27a';
+    var box = document.createElement('input');
+    box.type = 'checkbox';
+    box.value = d.name;
+    box.checked = (x.domains || []).indexOf(d.name) >= 0;
+    lab.title = d.desc;
+    lab.appendChild(box);
+    lab.appendChild(document.createTextNode(' ' + d.name + ' '));
+    lab.appendChild(el('span', 'muted', d.kb + 'KB'));
+    tdDom.appendChild(lab);
+  });
+  tr.appendChild(tdDom);
+
+  var tdHand = el('td');
+  var 态 = x.handin || '';
+  var 态字 = el('span', '', 态);
+  tdHand.title = x.handin_why || '';
+  tdHand.style.fontSize = '12px';
+  if (态 === '该交卷') 态字.style.color = '#ff8a8a';
+  else if (态 === '已交卷') 态字.style.color = '#5fd39a';
+  else 态字.style.color = '#8fa8c8';
+  tdHand.appendChild(态字);
+  // 「该交卷」才给催的按钮（催一次 = 多跑一轮，别乱点）
+  if (态 === '该交卷') {
+    var 催钮 = el('button', '', '催');
+    催钮.style.cssText = 'margin-left:6px;font-size:11px;padding:1px 6px;border-radius:6px;'
+      + 'border:1px solid #4a3a52;background:#2a1f2e;color:#ffb0b0;cursor:pointer';
+    催钮.title = '给她塞一句提醒，让她自己补交卷（花一轮 token）';
+    催钮.addEventListener('click', function (e) {
+      e.stopPropagation();
+      // 点之前先问一次真状态：这会儿已经交了，就别催（2026-10-27 主人要求）
+      催钮.disabled = true;
+      催钮.textContent = '查…';
+      fetch('/api/state', { cache: 'no-store' })
+        .then(function (r) { return r.json() })
+        .then(function (s) {
+          var 现 = (s.sessions || []).filter(function (y) { return y.session === x.session })[0];
+          var 态现 = (现 && 现.handin) || '';
+          if (态现 !== '该交卷') {
+            催钮.textContent = (态现 === '已交卷' ? '已交卷' : '不用催');
+            催钮.style.color = '#8fa8c8';
+            load();
+            return;
+          }
+          催钮.disabled = false;
+          催钮.textContent = '催';
+          if (!confirm('催一次要花一轮 token（几百到一千多），确定？')) return;
+          催交(x.session, 催钮);
+        })
+        .catch(function () {
+          催钮.disabled = false;
+          催钮.textContent = '催';
+        });
+    });
+    tdHand.appendChild(催钮);
+  }
+  tr.appendChild(tdHand);
+
+  var tdNote = el('td');
+  var noteIn = document.createElement('input');
+  noteIn.value = x.note || '';
+  noteIn.placeholder = '点这里写备注';
+  noteIn.style.cssText = 'width:100%;min-width:180px;background:#0e1b2c;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font:inherit';
+  noteIn.onchange = function () {
+    api('session', { file: x.file, note: noteIn.value }).then(function (r) {
+      记((r.ok ? '✔ 备注已存：' : '✘ ') + x.session + ' · ' + noteIn.value, r.ok);
+      if (r.ok) { x.note = noteIn.value; }
+    });
+  };
+  tdNote.appendChild(noteIn);
+  tr.appendChild(tdNote);
+
+  // 改了就存
+  function 存() {
+    var doms = [];
+    tdDom.querySelectorAll('input:checked').forEach(function (i) { doms.push(i.value); });
+    var role = tdRole.querySelector('select').value;
+    var 旧 = { role: x.role, domains: (x.domains || []).slice() };
+    api('session', { file: x.file, role: role, domains: doms }).then(function (r) {
+      if (!r.ok) { 记('✘ ' + x.session + ' 没存上：' + (r['说'] || ''), false); return; }
+      改过.unshift({ file: x.file, session: x.session, 旧: 旧 });
+      改过 = 改过.slice(0, 10);
+      画撤销();
+      var extra = (r['降级'] && r['降级'].length) ? '（' + r['降级'].join('、') + ' 降为「工作」）' : '';
+      记('✔ ' + x.session + ' → ' + role + ' / ' + (doms.join('+') || '无') + extra, true);
+      x.role = role; x.domains = doms;
+    });
+  }
+  tdRole.querySelector('select').onchange = function () {
+    var role = this.value;
+    if (x.role === '主窗口' && role !== '主窗口' && !confirm(x.session + ' 现在是主窗口，改成「' + role + '」？\n改完要重启才生效。')) {
+      this.value = x.role; return;
+    }
+    存();
+  };
+  tdDom.querySelectorAll('input').forEach(function (b) { b.onchange = 存; });
+
+  var tdOp = el('td');
+  if (x.window) {
+    // 有窗口就不占地方了，✅ 已经说明问题
+  } else {
+    var ab = el('button', 'ghost', '归档');
+    ab.style.fontSize = '12px';
+    ab.onclick = function () {
+      if (!confirm('把「' + x.session + '」归档？档案留着，只是从表里折起来。')) return;
+      api('archive', { file: x.file, archived: true }).then(function (r) {
+        记((r.ok ? '✔ 已归档 ' : '✘ ') + x.session, r.ok);
+        if (r.ok) load();
+      });
+    };
+    tdOp.appendChild(ab);
+  }
+  tr.appendChild(tdOp);
+  return tr;
+}
+
+function 渲染分身表(列表) {
+  var 全 = 列表 || [];
+  var 主 = 全.filter(function (x) { return !x.archived && x.role === '主窗口'; });
+  var 其他 = 全.filter(function (x) { return !x.archived && x.role !== '主窗口'; });
+
+  var tb = document.querySelector('#sess tbody');
+  tb.innerHTML = '';
+  主.forEach(function (x) { tb.appendChild(建行(x)); });
+  if (!主.length) {
+    var tr0 = document.createElement('tr');
+    var td0 = el('td', 'muted', '还没有主窗口 —— 挑一间升上去');
+    td0.colSpan = 6;
+    tr0.appendChild(td0);
+    tb.appendChild(tr0);
+  }
+
+  var ob = document.querySelector('#others tbody');
+  ob.innerHTML = '';
+  其他.forEach(function (x) { ob.appendChild(建行(x)); });
+
+  var wrap = document.getElementById('othersWrap');
+  var sum = document.getElementById('othersSum');
+  if (wrap && sum) {
+    sum.textContent = '其他分身 ' + 其他.length + ' 间' + (其他展开过 ? '（收起）' : '（点开看）');
+    wrap.open = 其他展开过;
+    wrap.onclick = null;
+    wrap.addEventListener('toggle', function () { 其他展开过 = wrap.open; load(); });
+  }
+}
+
+function 渲染归档(列表) {
+  var box = document.getElementById('archived');
+  if (!box) return;
+  var 归档 = (列表 || []).filter(function (x) { return x.archived; });
+  box.innerHTML = '';
+  if (!归档.length) {
+    box.innerHTML = '<span class="muted">（没有归档的分身）</span>';
+    return;
+  }
+  var det = document.createElement('details');
+  var sum = document.createElement('summary');
+  sum.className = 'muted';
+  sum.textContent = '已归档 ' + 归档.length + ' 间（点开看）';
+  det.appendChild(sum);
+  归档.forEach(function (x) {
+    var row = document.createElement('div');
+    row.style.cssText = 'padding:4px 0;opacity:.75';
+    row.appendChild(document.createTextNode(x.session + ' · ' + x.role + ' · ' + ((x.domains || []).join('+') || '无分区') + ' '));
+    if (x.dsh_archived) {
+      // DSH 那边归档的，得先把窗口唤回来，面板会自动认出
+      var tip = el('span', 'muted', '需在 DSH 唤回原窗口；唤回后这里会自动恢复');
+      tip.style.marginLeft = '6px';
+      row.appendChild(tip);
+    } else {
+      var rb = el('button', 'ghost', '取消归档');
+      rb.style.fontSize = '12px';
+      rb.onclick = function () {
+        api('archive', { file: x.file, archived: false }).then(function (r) {
+          记((r.ok ? '✔ 取消归档 ' : '✘ ') + x.session, r.ok);
+          if (r.ok) load();
+        });
+      };
+      row.appendChild(rb);
+    }
+    det.appendChild(row);
+  });
+  box.appendChild(det);
+}
+
+function 渲染提案(列表) {
+  var tb = document.querySelector('#props tbody');
+  tb.innerHTML = '';
+  if (!列表.length) {
+    var tr0 = document.createElement('tr');
+    var td0 = el('td', 'muted', '没有待审提案');
+    td0.colSpan = 6;
+    tr0.appendChild(td0);
+    tb.appendChild(tr0);
+    return;
+  }
+  列表.forEach(function (p) {
+    var tr = document.createElement('tr');
+    tr.appendChild(el('td', '', p.name));
+    tr.appendChild(el('td', '', p.from));
+    tr.appendChild(el('td', '', p.kind));
+    tr.appendChild(el('td', 'muted', p.target));
+    var td = el('td');
+    var b = el('button', '', '请主窗口审');
+    b.onclick = function () {
+      api('ask-review', { file: p.name }).then(function (r) {
+        记((r.ok ? '✔ 已排队：' : '✘ ') + p.name + ' · ' + (r.out || ''), r.ok);
+      });
+    };
+    td.appendChild(b);
+    tr.appendChild(td);
+    tb.appendChild(tr);
+  });
+}
+
+
+
+// 催一次交卷：调插件接口，让她自己补（花一轮 token，所以只在「该交卷」时给按钮）
+function 催交(名, 按钮) {
+  按钮.disabled = true;
+  按钮.textContent = '催了…';
+  fetch('/api/nudge', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ 名: 名 })
+  }).then(function (r) { return r.json() })
+    .then(function (d) {
+      按钮.textContent = d.ok ? '已催' : '没开窗';
+      按钮.title = d.说 || '';
+      if (!d.ok) { setTimeout(function () { 按钮.disabled = false; 按钮.textContent = '催'; }, 2000) }
+    })
+    .catch(function () {
+      按钮.textContent = '催不了';
+      按钮.disabled = false;
+      setTimeout(function () { 按钮.textContent = '催'; }, 2000);
+    });
+}
+
+function 渲染提案历史(列表) {
+  var box = document.getElementById('propsDone');
+  if (!box) return;
+  box.innerHTML = '';
+  var 列 = 列表 || [];
+  if (!列.length) {
+    box.innerHTML = '<span class="muted">还没有处理过的提案</span>';
+    return;
+  }
+  var det = document.createElement('details');
+  var sum = document.createElement('summary');
+  sum.className = 'muted';
+  sum.style.cursor = 'pointer';
+  sum.textContent = '已处理提案 ' + 列.length + ' 份（默认只显示最近 5 份）';
+  det.appendChild(sum);
+  var tb = document.createElement('table');
+  tb.style.marginTop = '8px';
+  tb.innerHTML = '<thead><tr><th style="width:96px">时间</th><th style="width:70px">结论</th><th style="width:90px">谁提的</th><th>文件</th><th>备注</th></tr></thead>';
+  var body = document.createElement('tbody');
+  列.slice(0, 5).forEach(function (x) {
+    var tr = document.createElement('tr');
+    tr.appendChild(el('td', 'muted', x['时间'] || ''));
+    var tdD = el('td', '', x['decision'] || '');
+    tdD.style.color = x['decision'] === '驳回' ? '#8fa8c8' : '#5fd39a';
+    tr.appendChild(tdD);
+    tr.appendChild(el('td', '', x['from'] || ''));
+    tr.appendChild(el('td', 'muted', (x['name'] || '').replace(/\.md$/, '')));
+    tr.appendChild(el('td', 'muted', (x['note'] || '').slice(0, 60)));
+    body.appendChild(tr);
+  });
+  tb.appendChild(body);
+  det.appendChild(tb);
+  box.appendChild(det);
+}
+
+function 渲染建议(列表) {
+  var tb = document.querySelector('#sugs tbody');
+  tb.innerHTML = '';
+  var 未处理 = (列表 || []).filter(function (g) { return (g['状态'] || '未处理') === '未处理'; });
+  var 已处理 = (列表 || []).filter(function (g) { return (g['状态'] || '未处理') !== '未处理'; });
+  // 已处理按日期倒序，同日期按行号倒序
+  已处理.sort(function (a, b) {
+    if ((b['日期'] || '') !== (a['日期'] || '')) return (b['日期'] || '') > (a['日期'] || '') ? 1 : -1;
+    return (b['行'] || 0) - (a['行'] || 0);
+  });
+
+  function 建建议行(g) {
+    var tr = document.createElement('tr');
+    tr.appendChild(el('td', '', g['会话']));
+    tr.appendChild(el('td', '', String(g['行'])));
+    tr.appendChild(el('td', '', g['文本']));
+    var 全状态 = g['状态'] || '未处理';
+    // 只显示标准词；后面跟的说明再长也不铺在表里（2026-10-27 主人说状态看不见了）
+    var m状态 = /^(未处理|已看|已采纳|已修|不收|驳回|重复|已处理)/.exec(全状态);
+    var 短状态 = m状态 ? m状态[1] : '已处理';
+    var tdS = el('td', 'muted', 短状态);
+    tdS.title = 全状态;
+    if (短状态 === '未处理') tdS.style.color = '#ffd27a';
+    else if (短状态 === '已采纳' || 短状态 === '已修') tdS.style.color = '#5fd39a';
+    else tdS.style.color = '#8fa8c8';
+    tr.appendChild(tdS);
+    var td = el('td');
+    if (短状态 === '未处理') {
+      var b = el('button', 'ghost', '请主窗口看');
+      b.style.fontSize = '12px';
+      b.onclick = function () {
+        api('ask-review-suggest', { '会话': g['会话'], '行': g['行'] }).then(function (r) {
+          记((r.ok ? '✔ 已排队：' : '✘ ') + g['会话'] + ' 第' + g['行'] + '条', r.ok);
+        });
+      };
+      td.appendChild(b);
+    }
+    tr.appendChild(td);
+    return tr;
+  }
+
+  if (!未处理.length) {
+    var tr0 = document.createElement('tr');
+    var td0 = el('td', 'muted', '没有未处理的建议');
+    td0.colSpan = 6;
+    tr0.appendChild(td0);
+    tb.appendChild(tr0);
+  }
+  未处理.forEach(function (g) { tb.appendChild(建建议行(g)); });
+
+  // 已处理：折叠，只放最近 5 条
+  var box = document.getElementById('sugsDone');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!已处理.length) {
+    box.innerHTML = '<span class="muted">还没有处理过的建议</span>';
+    return;
+  }
+  var det = document.createElement('details');
+  var sum = document.createElement('summary');
+  sum.className = 'muted';
+  sum.style.cursor = 'pointer';
+  sum.textContent = '已处理 ' + 已处理.length + ' 条（默认只显示最近 5 条）';
+  det.appendChild(sum);
+  var tb2 = document.createElement('table');
+  tb2.style.marginTop = '8px';
+  tb2.innerHTML = '<thead><tr><th style="width:100px">会话</th><th style="width:46px">行</th><th>内容</th><th style="width:90px">状态</th></tr></thead>';
+  var body2 = document.createElement('tbody');
+  已处理.slice(0, 5).forEach(function (g) {
+    var row = 建建议行(g);
+    row.lastChild.remove();   // 已处理的不要按钮
+    body2.appendChild(row);
+  });
+  tb2.appendChild(body2);
+  det.appendChild(tb2);
+  box.appendChild(det);
+}
+
+var 首画 = true;   // 首次加载要画一次新建表单
+
+function load() {
+  api('state').then(function (s) {
+    if (!s.ok) { 记('读不到状态：' + (s['说'] || ''), false); return; }
+    域说明 = s.domains || [];
+    渲染域说明(域说明);
+    if (首画) 画新建();
+    var 名 = (s.sessions || []).map(function (x) { return x.session + ':' + x.role + ':' + (x.domains || []).join('+'); }).join('|');
+    if (名 !== 上次会话 || 首画) {
+      渲染分身表(s.sessions || []);
+      渲染归档(s.sessions || []);
+      上次会话 = 名;
+      首画 = false;
+    }
+    渲染提案(s.proposals || []);
+     渲染提案历史(s['提案历史'] || []);
+    渲染建议(s.suggestions || []);
+  }).catch(function (e) { 记('出错了：' + e, false); });
+}
+
+// 新建分身的表单
+function 画新建() {
+  var box = document.getElementById('ns-role');
+  box.innerHTML = '';
+  box.appendChild(下拉(ROLES.filter(function (r) { return r !== '主窗口'; }), '工作', 'data-ns'));
+  var db = document.getElementById('ns-doms');
+  db.innerHTML = '';
+  域说明.forEach(function (d) {
+    var lab = el('label', 'dom');
+    var b = document.createElement('input');
+    b.type = 'checkbox'; b.value = d.name;
+    lab.title = d.desc;
+    lab.appendChild(b);
+    lab.appendChild(document.createTextNode(' ' + d.name + ' '));
+    lab.appendChild(el('span', 'muted', d.kb + 'KB'));
+    db.appendChild(lab);
+  });
+}
+
+document.getElementById('ns-go').onclick = function () {
+  var name = document.getElementById('ns-name').value.trim();
+  var role = document.querySelector('#ns-role select').value;
+  var doms = [];
+  document.querySelectorAll('#ns-doms input:checked').forEach(function (i) { doms.push(i.value); });
+  if (!name) { 记('✘ 名字没填', false); return; }
+  api('new-session', { name: name, role: role, domains: doms }).then(function (r) {
+    记((r.ok ? '✔ 建好 ' : '✘ ') + name + (r['说'] ? '：' + r['说'] : ''), r.ok);
+    if (r.ok) { document.getElementById('ns-name').value = ''; load(); }
+  });
+};
+
+load();
+setInterval(function () { load(); }, 15000);
+</script>
+</body>
+</html>

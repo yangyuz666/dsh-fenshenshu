@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+body/jiyi/
+body/jinqi/
+body/cankao/迁移选择.json
+body/cankao/AI判.txt
+beifen/
+linshi/

@@ -1,0 +1,14 @@
+{
+  "name": "dsh-handin-bubble",
+  "version": "0.1.0",
+  "description": "谁没交卷，直接在 DSH 界面里挂一个小气泡（读 body/renwu/_催交.json，只读不花 token）",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/host.js",
+  "exports": { ".": "./lib/host.js", "./client": "./client.js", "./package.json": "./package.json" },
+  "files": ["lib", "client.js", "cordis.patch.yml", "README.md"],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web", "inject": [] }
+  }
+}

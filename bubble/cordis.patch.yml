@@ -1,0 +1,4 @@
+# dsh-handin-bubble：界面里挂一个「谁没交卷」的小气泡
+- insert:
+    - id: handin-bubble
+      name: dsh-handin-bubble

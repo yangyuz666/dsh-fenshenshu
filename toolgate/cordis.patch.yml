@@ -1,0 +1,4 @@
+# dsh-toolgate：按 domains 给分身裁掉不该用的工具
+- insert:
+    - id: toolgate
+      name: dsh-toolgate
